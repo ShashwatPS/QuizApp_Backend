@@ -1,15 +1,15 @@
 FROM node:21-alpine3.18
 
-WORKDIR /src
+WORKDIR /app
 
 COPY . .
 
 RUN npm install
 
-WORKDIR /src/prisma
+WORKDIR /app/src
 RUN npx prisma migrate dev --name init
 
-WORKDIR /src
+WORKDIR /app
 RUN npx tsc
 
 EXPOSE 3000
