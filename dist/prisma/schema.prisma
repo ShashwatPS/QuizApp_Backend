@@ -9,7 +9,7 @@ datasource db {
 
 model teams {
   team_id       String          @id
-  team_name     String
+  team_name     String          @unique
   team_password String
   users         users[]
   team_progress team_progress[]
@@ -31,20 +31,13 @@ model questions {
 }
 
 model team_progress {
-  progress_id            String                   @id
-  team_id                String
-  question_id            String
-  is_completed           Boolean
-  is_Restricted          Boolean
-  team                   teams                    @relation(fields: [team_id], references: [team_id])
-  question               questions                @relation(fields: [question_id], references: [question_id])
-  question_time_tracking question_time_tracking[]
-}
+  progress_id  String    @id
+  team_id      String
+  question_id  String
+  is_completed Boolean
+  solved_at    DateTime
+  team         teams     @relation(fields: [team_id], references: [team_id])
+  question     questions @relation(fields: [question_id], references: [question_id])
 
-model question_time_tracking {
-  tracking_id   String        @id
-  progress_id   String
-  question_id   String
-  time_solved   DateTime
-  team_progress team_progress @relation(fields: [progress_id], references: [progress_id])
+  @@unique([team_id, question_id])
 }
