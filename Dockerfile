@@ -7,7 +7,7 @@ COPY . .
 RUN npm install
 
 WORKDIR /app/src
-RUN npx prisma migrate dev --name init
+RUN npx prisma migrate deploy
 
 WORKDIR /app
 RUN npx tsc
