@@ -46,13 +46,13 @@ app.post('/register-team', async (req: Request<{}, {}, TeamRequestBody>, res: Re
         }
         const newTeam = await prisma.teams.create({
             data: {
-                team_id: crypto.randomUUID(),
                 team_name,
                 team_password,
                 users: {
                     create: users.map(user => ({
                         EnrollNo: user.EnrollNo,
-                        name: user.name
+                        name: user.name,
+                        team_name
                     }))
                 }
             },
@@ -86,28 +86,38 @@ app.post('/add-question', async (req: Request<{}, {}, QuestionRequestBody>, res:
 app.post('/login-team', async (req: Request<{}, {}, LoginRequestBody>, res: Response) => {
     const { team_name, team_password } = req.body;
     try {
-        const team = await prisma.teams.findFirst({
-            where: {
-                team_name,
-                team_password,
-            },
+        const team = await prisma.teams.findUnique({
+            where: { team_name },
+            select: {
+                team_name: true
+            }
         });
         if (!team) {
             return res.status(401).json({ error: 'Invalid team name or password' });
         }
-        res.status(200).json({ message: 'Login successful', team_id: team.team_id });
+        const validPassword = team.team_password === team_password;
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid team name or password' });
+        }
+        res.status(200).json({ message: 'Login successful', team_name: team.team_name });
     } catch (error) {
         res.status(500).json({ error: (error as Error).message });
     }
 });
 
 app.post('/submit-answer', async (req: Request, res: Response) => {
-    const { team_id, question_id, answer } = req.body;
+    const { team_name, question_id, answer } = req.body;
     try {
+        const team = await prisma.teams.findUnique({ where: { team_name } });
+        if (!team) {
+            return res.status(404).json({ message: 'Team not found' });
+        }
+
         const teamProgress = await prisma.team_progress.findFirst({
-            where: { team_id, question_id },
+            where: { team_name, question_id },
             include: { question: true }
         });
+
         if (!teamProgress) {
             return res.status(404).json({ message: 'Question not found or no progress for this team.' });
         }
@@ -116,7 +126,7 @@ app.post('/submit-answer', async (req: Request, res: Response) => {
         }
         if (teamProgress.question.answer.toLowerCase() === answer.toLowerCase()) {
             await prisma.team_progress.update({
-                where: { team_id_question_id: { team_id, question_id } },
+                where: { team_name_question_id: { team_name, question_id } },
                 data: { is_completed: true, solved_at: new Date() }
             });
             return res.status(200).json({ message: 'Correct answer! Question marked as completed.' });
