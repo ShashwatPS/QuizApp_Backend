@@ -5,7 +5,11 @@ WORKDIR /src
 COPY . .
 
 RUN npm install
+
+WORKDIR /src/prisma
 RUN npx prisma migrate dev --name init
+
+WORKDIR /src
 RUN npx tsc
 
 EXPOSE 3000
