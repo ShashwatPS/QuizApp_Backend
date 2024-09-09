@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import WebSocket, { Server as WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
-import { TeamRequestBody, QuestionRequestBody, User, LoginRequestBody } from './interfaces';
+import { TeamRequestBody, QuestionRequestBody, LoginRequestBody } from './interfaces';
 
 dotenv.config();
 
@@ -89,7 +89,8 @@ app.post('/login-team', async (req: Request<{}, {}, LoginRequestBody>, res: Resp
         const team = await prisma.teams.findUnique({
             where: { team_name },
             select: {
-                team_name: true
+                team_name: true,
+                team_password: true
             }
         });
         if (!team) {
