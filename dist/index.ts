@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import WebSocket, { Server as WebSocketServer } from 'ws';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
-import {TeamRequestBody, QuestionRequestBody, User, LoginRequestBody} from './interfaces';
+import { TeamRequestBody, QuestionRequestBody, User, LoginRequestBody } from './interfaces';
 
 dotenv.config();
 
@@ -13,6 +13,27 @@ const wss = new WebSocketServer({ port: 8080 });
 
 app.use(express.json());
 
+app.post('/lock-all-teams', async (req: Request, res: Response) => {
+    try {
+        await prisma.teams.updateMany({
+            data: { locked: true }
+        });
+        res.status(200).json({ message: 'All teams locked successfully.' });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
+
+app.post('/unlock-all-teams', async (req: Request, res: Response) => {
+    try {
+        await prisma.teams.updateMany({
+            data: { locked: false }
+        });
+        res.status(200).json({ message: 'All teams unlocked successfully.' });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
 
 app.post('/register-team', async (req: Request<{}, {}, TeamRequestBody>, res: Response) => {
     const { team_name, team_password, users } = req.body;
@@ -76,7 +97,7 @@ app.post('/login-team', async (req: Request<{}, {}, LoginRequestBody>, res: Resp
         }
         res.status(200).json({ message: 'Login successful', team_id: team.team_id });
     } catch (error) {
-        res.status(500).json({error: (error as Error).message});
+        res.status(500).json({ error: (error as Error).message });
     }
 });
 
@@ -122,11 +143,25 @@ app.get('/get-questions', async (req: Request, res: Response) => {
     }
 });
 
+app.post('/lock-team', async (req: Request, res: Response) => {
+    const { team_name } = req.body;
+    try {
+        const team = await prisma.teams.update({
+            where: { team_name },
+            data: { locked: true }
+        });
+        res.status(200).json({ message: `Team ${team_name} has been locked.` });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
+
 wss.on('connection', (ws: WebSocket) => {
     console.log('New client connected');
 
-    ws.on('message', (message: string) => {
+    ws.on('message', async (message: string) => {
         const data = JSON.parse(message);
+
         if (data.type === 'hint') {
             wss.clients.forEach(client => {
                 if (client.readyState === WebSocket.OPEN) {
@@ -135,12 +170,40 @@ wss.on('connection', (ws: WebSocket) => {
             });
         }
 
-        if (data.type === 'lock') {
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'lock', message: 'Website locked!' }));
-                }
-            });
+        if (data.type === 'lock' || data.type === 'unlock') {
+            const isLocking = data.type === 'lock';
+            const teamName = data.team_name;
+            try {
+                await prisma.teams.update({
+                    where: { team_name: teamName },
+                    data: { locked: isLocking }
+                });
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: data.type, team_name: teamName, message: `Team ${teamName} ${isLocking ? 'locked' : 'unlocked'}!` }));
+                    }
+                });
+            } catch (error) {
+                console.error(`Error ${data.type} team:`, error);
+                ws.send(JSON.stringify({ message: `Failed to ${data.type} team ${teamName}` }));
+            }
+        }
+
+        if (data.type === 'lock_all' || data.type === 'unlock_all') {
+            const isLockingAll = data.type === 'lock_all';
+            try {
+                await prisma.teams.updateMany({
+                    data: { locked: isLockingAll }
+                });
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: data.type, message: `All teams ${isLockingAll ? 'locked' : 'unlocked'}!` }));
+                    }
+                });
+            } catch (error) {
+                console.error(`Error ${data.type} all teams:`, error);
+                ws.send(JSON.stringify({ message: `Failed to ${data.type} all teams` }));
+            }
         }
     });
 
