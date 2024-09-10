@@ -7,37 +7,37 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model teams {
-  team_name     String          @id
+model Team {
+  team_name     String         @id
   team_password String
-  users         users[]
-  team_progress team_progress[]
-  locked        Boolean         @default(false)
+  users         User[]
+  team_progress TeamProgress[]
+  locked        Boolean        @default(false)
 }
 
-model users {
+model User {
   EnrollNo  String @id
   name      String
   team_name String
-  team      teams  @relation(fields: [team_name], references: [team_name])
+  team      Team   @relation(fields: [team_name], references: [team_name])
 }
 
-model questions {
-  question_id          String          @id
+model Question {
+  question_id          String         @id
   question_text        String
   question_description String
   answer               String
-  team_progress        team_progress[]
+  team_progress        TeamProgress[]
 }
 
-model team_progress {
+model TeamProgress {
   progress_id  String    @id
   team_name    String
   question_id  String
   is_completed Boolean
-  solved_at    DateTime
-  team         teams     @relation(fields: [team_name], references: [team_name])
-  question     questions @relation(fields: [question_id], references: [question_id])
+  solved_at    DateTime?
+  team         Team      @relation(fields: [team_name], references: [team_name])
+  question     Question  @relation(fields: [question_id], references: [question_id])
 
   @@unique([team_name, question_id])
 }
