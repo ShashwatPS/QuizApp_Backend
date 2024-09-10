@@ -209,6 +209,22 @@ app.post('/team-locked', async (req: Request<{}, {}, { team_name: string }>, res
     }
 });
 
+app.get('/get-hints', async (req: Request, res: Response) => {
+    try {
+        const hints = await prisma.hint.findMany({
+            select: {
+                id: true,
+                hintText: true,
+                createdAt: true
+            }
+        });
+        res.status(200).json(hints);
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
+
+
 wss.on('connection', (ws: WebSocket) => {
     console.log('New client connected');
 
@@ -216,12 +232,27 @@ wss.on('connection', (ws: WebSocket) => {
         const data = JSON.parse(message);
 
         if (data.type === 'hint') {
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: 'hint', hint: data.hintText }));
-                }
-            });
+            const hintText = data.hintText;
+            if (typeof hintText !== 'string' || hintText.trim() === '') {
+                console.error('Invalid hintText:', hintText);
+                return ws.send(JSON.stringify({ error: 'Invalid hintText provided' }));
+            }
+            try {
+                wss.clients.forEach(client => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({ type: 'hint', hint: hintText }));
+                    }
+                });
+
+                await prisma.hint.create({
+                    data: { hintText }
+                });
+            } catch (error) {
+                console.error('Error saving hint:', error);
+                ws.send(JSON.stringify({ error: 'Failed to save hint' }));
+            }
         }
+
 
         if (data.type === 'lock' || data.type === 'unlock') {
             const isLocking = data.type === 'lock';

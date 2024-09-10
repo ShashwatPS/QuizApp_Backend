@@ -41,3 +41,9 @@ model TeamProgress {
 
   @@unique([team_name, question_id])
 }
+
+model Hint {
+  id        String   @id @default(uuid())
+  hintText  String
+  createdAt DateTime @default(now())
+}
