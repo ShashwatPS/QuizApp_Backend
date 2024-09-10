@@ -37,6 +37,15 @@ CREATE TABLE "TeamProgress" (
     CONSTRAINT "TeamProgress_pkey" PRIMARY KEY ("progress_id")
 );
 
+-- CreateTable
+CREATE TABLE "Hint" (
+    "id" TEXT NOT NULL,
+    "hintText" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Hint_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "TeamProgress_team_name_question_id_key" ON "TeamProgress"("team_name", "question_id");
 
