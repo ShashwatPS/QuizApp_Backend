@@ -193,6 +193,21 @@ app.post('/toggle-team-lock', async (req: Request, res: Response) => {
     }
 });
 
+app.post('/team-locked', async (req: Request<{}, {}, { team_name: string }>, res: Response) => {
+    const { team_name } = req.body;
+    try {
+        const team = await prisma.team.findUnique({
+            where: { team_name },
+            select: { locked: true }
+        });
+        if (!team) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+        res.status(200).json({ team_name, locked: team.locked });
+    } catch (error) {
+        res.status(500).json({ error: (error as Error).message });
+    }
+});
 
 wss.on('connection', (ws: WebSocket) => {
     console.log('New client connected');

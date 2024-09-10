@@ -223,6 +223,22 @@ app.post('/toggle-team-lock', (req, res) => __awaiter(void 0, void 0, void 0, fu
         res.status(500).json({ error: error.message });
     }
 }));
+app.post('/team-locked', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { team_name } = req.body;
+    try {
+        const team = yield prisma.team.findUnique({
+            where: { team_name },
+            select: { locked: true }
+        });
+        if (!team) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
+        res.status(200).json({ team_name, locked: team.locked });
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+}));
 wss.on('connection', (ws) => {
     console.log('New client connected');
     ws.on('message', (message) => __awaiter(void 0, void 0, void 0, function* () {
