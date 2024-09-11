@@ -172,9 +172,17 @@ app.get('/get-questions', async (req: Request, res: Response) => {
     }
 });
 
+
 app.post('/unsolved-questions', async (req: Request<{}, {}, { team_name: string }>, res: Response) => {
     const { team_name } = req.body;
     try {
+        const team = await prisma.team.findUnique({
+            where: { team_name }
+        });
+
+        if (!team) {
+            return res.status(404).json({ error: 'Team not found' });
+        }
         const solvedQuestions = await prisma.teamProgress.findMany({
             where: { team_name, is_completed: true },
             select: { question_id: true }
@@ -198,11 +206,13 @@ app.post('/unsolved-questions', async (req: Request<{}, {}, { team_name: string 
             return parseInt(text, 10);
         };
         unsolvedQuestions.sort((a, b) => extractNumber(a.question_text) - extractNumber(b.question_text));
+
         res.status(200).json(unsolvedQuestions);
     } catch (error) {
         res.status(500).json({ error: (error as Error).message });
     }
 });
+
 
 
 app.post('/toggle-team-lock', async (req: Request, res: Response) => {
